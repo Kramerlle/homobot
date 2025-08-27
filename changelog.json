@@ -1,0 +1,6 @@
+[
+	{"date": "< 20.03.23", "content": "**-** chat\n**+** chat\n**+** podcast\n**+** storytime\n**+** outro\n**+** homozitat\n**+** ping"},
+    {"date": "20.03.23", "content": "**+** vineboom"},
+	{"date": "21.03.23", "content": "**+** hjhighscores\n**-** storytime\n**+** changelog\n**+** outro-Cooldown (5min)"},
+	{"date": "25.03.23", "content": "**+** suggestfeature"}
+]
