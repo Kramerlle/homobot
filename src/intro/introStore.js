@@ -24,14 +24,24 @@ const removeIntro = (userId) => {
 };
 
 // Wandelt beliebiges Audio in Ogg/Opus um (so wie die anderen Sounds im Bot)
-// und schneidet es auf maxSeconds ab.
+// und schneidet es auf maxSeconds ab. Die Eingabe wird erst als Datei
+// gespeichert, weil ffmpeg z.B. MP4/M4A über eine Pipe nicht richtig lesen kann.
+const minOutputBytes = 2048;
+
 const saveIntro = (userId, buffer) =>
   new Promise((resolve, reject) => {
+    const uploadPath = `${introPath(userId)}.upload`;
     const tmpPath = `${introPath(userId)}.tmp`;
+    const cleanup = () => {
+      fs.rmSync(uploadPath, { force: true });
+      fs.rmSync(tmpPath, { force: true });
+    };
+
+    fs.writeFileSync(uploadPath, buffer);
     const ffmpeg = spawn(ffmpegPath, [
       "-hide_banner",
       "-loglevel", "error",
-      "-i", "pipe:0",
+      "-i", uploadPath,
       "-t", String(maxSeconds),
       "-vn",
       "-ac", "2",
@@ -44,19 +54,24 @@ const saveIntro = (userId, buffer) =>
 
     let stderr = "";
     ffmpeg.stderr.on("data", (data) => (stderr += data));
-    ffmpeg.on("error", reject);
+    ffmpeg.on("error", (error) => {
+      cleanup();
+      reject(error);
+    });
     ffmpeg.on("close", (code) => {
       if (code !== 0 || !fs.existsSync(tmpPath)) {
-        fs.rmSync(tmpPath, { force: true });
+        cleanup();
         return reject(new Error(`ffmpeg exited with ${code}: ${stderr.trim()}`));
       }
+      // Nur Header, aber kein Ton drin -> altes Intro behalten
+      if (fs.statSync(tmpPath).size < minOutputBytes) {
+        cleanup();
+        return reject(new Error(`ffmpeg produced no audio: ${stderr.trim()}`));
+      }
       fs.renameSync(tmpPath, introPath(userId));
+      cleanup();
       resolve();
     });
-
-    // Fehler beim Schreiben (z.B. ffmpeg bricht früh ab) werden über "close" gemeldet
-    ffmpeg.stdin.on("error", () => {});
-    ffmpeg.stdin.end(buffer);
   });
 
 module.exports = { introPath, hasIntro, removeIntro, saveIntro, maxSeconds };

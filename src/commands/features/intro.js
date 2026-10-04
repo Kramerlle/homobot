@@ -9,6 +9,7 @@ const {
 } = require("../../intro/introStore");
 
 const maxFileSize = 10 * 1024 * 1024;
+const audioExtensions = /\.(mp3|ogg|opus|wav|m4a|aac|flac|wma|webm|mp4|mov|mkv)$/i;
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -45,10 +46,15 @@ module.exports = {
     switch (interaction.options.getSubcommand()) {
       case "hochladen": {
         const attachment = interaction.options.getAttachment("datei");
+        // Discord liefert den Content-Type nicht immer mit, daher auch die Endung prüfen
         const isMedia =
           attachment.contentType?.startsWith("audio/") ||
-          attachment.contentType?.startsWith("video/");
+          attachment.contentType?.startsWith("video/") ||
+          audioExtensions.test(attachment.name);
         if (!isMedia) {
+          console.log(
+            `Intro abgelehnt: ${attachment.name} (${attachment.contentType})`
+          );
           await interaction.reply({
             content: "Das ist keine Audiodatei du kek",
             ephemeral: true,
